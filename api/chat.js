@@ -26,13 +26,16 @@ function cosineSimilarity(a, b) {
   let normA = 0;
   let normB = 0;
 
-  for (let i = 0; i < a.length; i++) {
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) {
     dot += a[i] * b[i];
     normA += a[i] * a[i];
     normB += b[i] * b[i];
   }
 
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  if (!denom) return 0;
+  return dot / denom;
 }
 
 async function getEmbedding(apiKey, text) {
@@ -51,20 +54,21 @@ async function getEmbedding(apiKey, text) {
     }),
   });
 
-  const data = await resp.json();
+  const data = await resp.json().catch(() => null);
 
   if (!resp.ok) {
-    throw new Error(JSON.stringify(data));
+    const detail = data ? JSON.stringify(data) : `HTTP ${resp.status}`;
+    throw new Error(`Gemini embedContent failed: ${detail}`);
   }
 
   const values =
-    data.embedding?.values ||
-    data.embeddings?.[0]?.values ||
-    data.embedding?.value ||
+    data?.embedding?.values ||
+    data?.embeddings?.[0]?.values ||
+    data?.embedding?.value ||
     null;
 
-  if (!values || !Array.isArray(values)) {
-    throw new Error("Embedding values not found");
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error("Embedding values not found in Gemini response");
   }
 
   return values;
@@ -87,8 +91,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing GEMINI_API_KEY" });
     }
 
+    // 1) 使用者訊息 embedding
     const userEmbedding = await getEmbedding(apiKey, message);
 
+    // 2) 候選句 embeddings + 相似度
     const scored = [];
     for (const c of CANDIDATES) {
       const candidateEmbedding = await getEmbedding(apiKey, c.text);
@@ -99,8 +105,8 @@ export default async function handler(req, res) {
       });
     }
 
+    // 3) 排序取前 3
     scored.sort((a, b) => b.score - a.score);
-
     const top3 = scored.slice(0, 3);
     const best = top3[0];
 
@@ -110,13 +116,13 @@ export default async function handler(req, res) {
         text,
         score: Number(score.toFixed(4)),
       })),
-      similarity: Number(best.score.toFixed(4)),
+      similarity: Number((best.score || 0).toFixed(4)),
     });
   } catch (err) {
     console.error(err);
     return res.status(500).json({
       error: "Internal Server Error",
-      detail: err.message,
+      detail: err?.message || String(err),
     });
   }
 }
