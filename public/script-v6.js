@@ -81,7 +81,6 @@ async function sendMessage() {
 
     const nextText = data.next_prediction || "";
 
-    // 為了讓右側面板先有 3 筆顯示，先用固定的展示方式
     latestPredictions = nextText
       ? [
           { text: nextText, score: 0.80 },
@@ -113,5 +112,4 @@ toggleMaskBtn.addEventListener("click", () => {
   renderPredictions(latestPredictions, latestSimilarity);
 });
 
-// 初始畫面
 renderPredictions([], 0);
