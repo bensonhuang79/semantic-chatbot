@@ -33,9 +33,13 @@ function renderPredictions(predictions, similarity) {
     predictions.forEach((item) => {
       const div = document.createElement("div");
       div.className = `prediction-item ${masked ? "masked" : ""}`;
-      div.textContent = masked
-        ? "＊＊＊ 已遮蔽 ＊＊＊"
-        : `item.text（{item.text}（item.text（{Math.round(item.score * 100)}%）`;
+
+      if (masked) {
+        div.textContent = "＊＊＊ 已遮蔽 ＊＊＊";
+      } else {
+        div.textContent = `item.text（{item.text}（item.text（{Math.round(item.score * 100)}%）`;
+      }
+
       predictionList.appendChild(div);
     });
   }
@@ -73,15 +77,14 @@ async function sendMessage() {
       return;
     }
 
-    addMessage(data.reply || "沒有回覆", "bot");
+    addMessage(data.reply || "（沒有回覆）", "bot");
 
-    // 目前後端只回傳單一 next_prediction
-    // 前端這裡先顯示成 3 筆，避免右側面板空白
     const nextText = data.next_prediction || "";
 
+    // 為了讓右側面板先有 3 筆顯示，先用固定的展示方式
     latestPredictions = nextText
       ? [
-          { text: nextText, score: 0.8 },
+          { text: nextText, score: 0.80 },
           { text: "你是想問作業嗎？", score: 0.78 },
           { text: "你想學 AI 嗎？", score: 0.76 }
         ]
@@ -100,10 +103,15 @@ async function sendMessage() {
 sendBtn.addEventListener("click", sendMessage);
 
 userInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") sendMessage();
+  if (e.key === "Enter") {
+    sendMessage();
+  }
 });
 
 toggleMaskBtn.addEventListener("click", () => {
   masked = !masked;
   renderPredictions(latestPredictions, latestSimilarity);
 });
+
+// 初始畫面
+renderPredictions([], 0);
