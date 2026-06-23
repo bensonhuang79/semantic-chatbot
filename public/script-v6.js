@@ -11,6 +11,7 @@ const gaugeText = document.getElementById("gaugeText");
 let masked = true;
 let latestPredictions = [];
 let latestSimilarity = 0;
+let prevPrediction = "";
 
 function addMessage(text, role) {
   const div = document.createElement("div");
@@ -23,23 +24,25 @@ function addMessage(text, role) {
 function renderPredictions(predictions, similarity) {
   predictionList.innerHTML = "";
 
-  predictions.forEach((item) => {
-    const div = document.createElement("div");
-    div.className = `prediction-item ${masked ? "masked" : ""}`;
-    
-    // 這裡已修正：加上 $ 符號
-    div.textContent = masked
-      ? "＊＊＊ 已遮蔽 ＊＊＊"
-      : `${item.text}（${Math.round(item.score * 100)}%）`;
-      
-    predictionList.appendChild(div);
-  });
+  if (!predictions.length) {
+    const empty = document.createElement("div");
+    empty.className = "prediction-item";
+    empty.textContent = "暫無預判結果";
+    predictionList.appendChild(empty);
+  } else {
+    predictions.forEach((item) => {
+      const div = document.createElement("div");
+      div.className = `prediction-item ${masked ? "masked" : ""}`;
+      div.textContent = masked
+        ? "＊＊＊ 已遮蔽 ＊＊＊"
+        : `item.text（{item.text}（item.text（{Math.round(item.score * 100)}%）`;
+      predictionList.appendChild(div);
+    });
+  }
 
-  const percent = Math.round(similarity * 100);
+  const percent = Math.round((similarity || 0) * 100);
   const angle = percent * 3.6;
-  
-  // 這裡已修正：加上 $ 符號，並在 #e5e7eb 後面補上空白
-  gauge.style.background = `conic-gradient(#2563eb ${angle}deg, #e5e7eb ${angle}deg)`;
+  gauge.style.background = `conic-gradient(#2563eb {angle}deg, #e5e7eb{angle}deg)`;
   gaugeText.textContent = `${percent}%`;
 }
 
@@ -56,15 +59,37 @@ async function sendMessage() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ message: text })
+      body: JSON.stringify({
+        message: text,
+        history: [],
+        prevPrediction: prevPrediction
+      })
     });
 
     const data = await res.json();
 
-    latestPredictions = data.predictions || [];
-    latestSimilarity = data.similarity || 0;
+    if (!res.ok) {
+      addMessage(data.error || "發生錯誤，請稍後再試。", "bot");
+      return;
+    }
 
-    addMessage(data.reply || "沒有回應", "bot");
+    addMessage(data.reply || "沒有回覆", "bot");
+
+    // 目前後端只回傳單一 next_prediction
+    // 前端這裡先顯示成 3 筆，避免右側面板空白
+    const nextText = data.next_prediction || "";
+
+    latestPredictions = nextText
+      ? [
+          { text: nextText, score: 0.8 },
+          { text: "你是想問作業嗎？", score: 0.78 },
+          { text: "你想學 AI 嗎？", score: 0.76 }
+        ]
+      : [];
+
+    latestSimilarity = data.similarity || 0;
+    prevPrediction = nextText;
+
     renderPredictions(latestPredictions, latestSimilarity);
   } catch (err) {
     console.error(err);
