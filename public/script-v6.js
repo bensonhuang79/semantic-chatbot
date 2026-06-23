@@ -46,7 +46,10 @@ function renderPredictions(predictions, similarity) {
     });
   }
 
-  const percent = Number.isFinite(similarity) ? Math.max(0, Math.min(100, Math.round(similarity * 100))) : 0;
+  const percent = Number.isFinite(similarity)
+    ? Math.max(0, Math.min(100, Math.round(similarity * 100)))
+    : 0;
+
   const angle = percent * 3.6;
   gauge.style.background = `conic-gradient(#2563eb {angle}deg, #e5e7eb{angle}deg)`;
   gaugeText.textContent = `${percent}%`;
@@ -81,11 +84,9 @@ async function sendMessage() {
 
     addMessage(data.reply || "（沒有回覆）", "bot");
 
-    const predictions = Array.isArray(data.predictions) ? data.predictions : [];
-    latestPredictions = predictions;
-
+    latestPredictions = Array.isArray(data.predictions) ? data.predictions : [];
     latestSimilarity = Number.isFinite(data.similarity) ? data.similarity : 0;
-    prevPrediction = predictions.length > 0 ? String(predictions[0].text || "") : "";
+    prevPrediction = latestPredictions.length > 0 ? String(latestPredictions[0].text || "") : "";
 
     renderPredictions(latestPredictions, latestSimilarity);
   } catch (err) {
@@ -97,9 +98,7 @@ async function sendMessage() {
 sendBtn.addEventListener("click", sendMessage);
 
 userInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    sendMessage();
-  }
+  if (e.key === "Enter") sendMessage();
 });
 
 toggleMaskBtn.addEventListener("click", () => {
