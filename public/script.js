@@ -1,3 +1,5 @@
+console.log("SCRIPT VERSION 3");
+
 const chatMessages = document.getElementById("chatMessages");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -25,8 +27,8 @@ function renderPredictions(predictions, similarity) {
     const div = document.createElement("div");
     div.className = `prediction-item ${masked ? "masked" : ""}`;
     div.textContent = masked
-      ? "＊＊＊ 已遮蔽 ＊＊＊"
-      : `item.text（{item.text}（item.text（{Math.round(item.score * 100)}%）`;
+      ? "TEST MASKED"
+      : `TEST item.text−{item.text} -item.text−{Math.round(item.score * 100)}%`;
     predictionList.appendChild(div);
   });
 
