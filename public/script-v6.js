@@ -24,7 +24,7 @@ function addMessage(text, role) {
 function renderPredictions(predictions, similarity) {
   predictionList.innerHTML = "";
 
-  if (!predictions.length) {
+  if (!Array.isArray(predictions) || predictions.length === 0) {
     const empty = document.createElement("div");
     empty.className = "prediction-item";
     empty.textContent = "暫無預判結果";
@@ -37,14 +37,16 @@ function renderPredictions(predictions, similarity) {
       if (masked) {
         div.textContent = "＊＊＊ 已遮蔽 ＊＊＊";
       } else {
-        div.textContent = `item.text（{item.text}（item.text（{Math.round(item.score * 100)}%）`;
+        const text = typeof item?.text === "string" ? item.text : "";
+        const score = Number.isFinite(item?.score) ? item.score : 0;
+        div.textContent = `text（{text}（text（{Math.round(score * 100)}%）`;
       }
 
       predictionList.appendChild(div);
     });
   }
 
-  const percent = Math.round((similarity || 0) * 100);
+  const percent = Number.isFinite(similarity) ? Math.max(0, Math.min(100, Math.round(similarity * 100))) : 0;
   const angle = percent * 3.6;
   gauge.style.background = `conic-gradient(#2563eb {angle}deg, #e5e7eb{angle}deg)`;
   gaugeText.textContent = `${percent}%`;
@@ -79,18 +81,11 @@ async function sendMessage() {
 
     addMessage(data.reply || "（沒有回覆）", "bot");
 
-    const nextText = data.next_prediction || "";
+    const predictions = Array.isArray(data.predictions) ? data.predictions : [];
+    latestPredictions = predictions;
 
-    latestPredictions = nextText
-      ? [
-          { text: nextText, score: 0.80 },
-          { text: "你是想問作業嗎？", score: 0.78 },
-          { text: "你想學 AI 嗎？", score: 0.76 }
-        ]
-      : [];
-
-    latestSimilarity = data.similarity || 0;
-    prevPrediction = nextText;
+    latestSimilarity = Number.isFinite(data.similarity) ? data.similarity : 0;
+    prevPrediction = predictions.length > 0 ? String(predictions[0].text || "") : "";
 
     renderPredictions(latestPredictions, latestSimilarity);
   } catch (err) {
