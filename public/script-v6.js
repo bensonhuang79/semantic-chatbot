@@ -26,15 +26,20 @@ function renderPredictions(predictions, similarity) {
   predictions.forEach((item) => {
     const div = document.createElement("div");
     div.className = `prediction-item ${masked ? "masked" : ""}`;
+    
+    // 這裡已修正：加上 $ 符號
     div.textContent = masked
       ? "＊＊＊ 已遮蔽 ＊＊＊"
-      : `item.text（{item.text}（item.text（{Math.round(item.score * 100)}%）`;
+      : `${item.text}（${Math.round(item.score * 100)}%）`;
+      
     predictionList.appendChild(div);
   });
 
   const percent = Math.round(similarity * 100);
   const angle = percent * 3.6;
-  gauge.style.background = `conic-gradient(#2563eb {angle}deg, #e5e7eb{angle}deg)`;
+  
+  // 這裡已修正：加上 $ 符號，並在 #e5e7eb 後面補上空白
+  gauge.style.background = `conic-gradient(#2563eb ${angle}deg, #e5e7eb ${angle}deg)`;
   gaugeText.textContent = `${percent}%`;
 }
 
