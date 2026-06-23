@@ -1,4 +1,4 @@
-console.log("SCRIPT VERSION 3");
+console.log("SCRIPT VERSION 4");
 
 const chatMessages = document.getElementById("chatMessages");
 const userInput = document.getElementById("userInput");
