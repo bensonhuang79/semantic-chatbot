@@ -1,63 +1,79 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>語意相似度聊天機器人</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="app">
-    <header class="topbar">
-      <h1>語意相似度聊天機器人</h1>
-      <p>Embedding + 餘弦相似度</p>
-    </header>
+console.log("SCRIPT VERSION 4");
 
-    <main class="layout">
-      <!-- 左側：對話視窗 -->
-      <section class="chat-panel">
-        <h2>對話視窗</h2>
-        <div id="chatMessages" class="chat-messages">
-          <div class="message bot">
-            你好，我是你的語意相似度聊天機器人。
-          </div>
-        </div>
-      </section>
+const chatMessages = document.getElementById("chatMessages");
+const userInput = document.getElementById("userInput");
+const sendBtn = document.getElementById("sendBtn");
+const toggleMaskBtn = document.getElementById("toggleMaskBtn");
+const predictionList = document.getElementById("predictionList");
+const gauge = document.getElementById("gauge");
+const gaugeText = document.getElementById("gaugeText");
 
-      <!-- 右側：預判面板 + 相似度量表 -->
-      <aside class="side-panel">
-        <section class="prediction-card">
-          <div class="card-header">
-            <h2>預判面板</h2>
-            <button id="toggleMaskBtn" class="ghost-btn">偷看 / 遮蔽</button>
-          </div>
+let masked = true;
+let latestPredictions = [];
+let latestSimilarity = 0;
 
-          <div id="predictionList" class="prediction-list">
-            <div class="prediction-item masked">＊＊＊ 已遮蔽 ＊＊＊</div>
-            <div class="prediction-item masked">＊＊＊ 已遮蔽 ＊＊＊</div>
-            <div class="prediction-item masked">＊＊＊ 已遮蔽 ＊＊＊</div>
-          </div>
-        </section>
+function addMessage(text, role) {
+  const div = document.createElement("div");
+  div.className = `message ${role}`;
+  div.textContent = text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
 
-        <section class="gauge-card">
-          <h2>相似度圓形量表</h2>
-          <div class="gauge-wrap">
-            <div class="gauge" id="gauge">
-              <div class="gauge-inner">
-                <span id="gaugeText">0%</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </aside>
-    </main>
+function renderPredictions(predictions, similarity) {
+  predictionList.innerHTML = "";
 
-    <footer class="input-bar">
-      <input id="userInput" type="text" placeholder="輸入你的訊息..." />
-      <button id="sendBtn">送出</button>
-    </footer>
-  </div>
+  predictions.forEach((item) => {
+    const div = document.createElement("div");
+    div.className = `prediction-item ${masked ? "masked" : ""}`;
+    div.textContent = masked
+      ? "TEST MASKED"
+      : `TEST item.text−{item.text} -item.text−{Math.round(item.score * 100)}%`;
+    predictionList.appendChild(div);
+  });
 
-  <script src="script.js"></script>
-</body>
-</html>
+  const percent = Math.round(similarity * 100);
+  const angle = percent * 3.6;
+  gauge.style.background = `conic-gradient(#2563eb {angle}deg, #e5e7eb{angle}deg)`;
+  gaugeText.textContent = `${percent}%`;
+}
+
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text) return;
+
+  addMessage(text, "user");
+  userInput.value = "";
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: text })
+    });
+
+    const data = await res.json();
+
+    latestPredictions = data.predictions || [];
+    latestSimilarity = data.similarity || 0;
+
+    addMessage(data.reply || "沒有回應", "bot");
+    renderPredictions(latestPredictions, latestSimilarity);
+  } catch (err) {
+    console.error(err);
+    addMessage("發生錯誤，請稍後再試。", "bot");
+  }
+}
+
+sendBtn.addEventListener("click", sendMessage);
+
+userInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+
+toggleMaskBtn.addEventListener("click", () => {
+  masked = !masked;
+  renderPredictions(latestPredictions, latestSimilarity);
+});
