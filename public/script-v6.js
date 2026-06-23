@@ -1,14 +1,3 @@
-function renderPredictions(predictions, similarity) {
-  predictionList.innerHTML = "";
-
-  predictions.forEach((item) => {
-    const div = document.createElement("div");
-    div.className = `prediction-item ${masked ? "masked" : ""}`;
-    div.textContent = masked
-      ? "＊＊＊ 已遮蔽 ＊＊＊"
-      : `item.text（{item.text}（item.text（{Math.round(item.score * 100)}%）`;
-    predictionList.appendChild(div);
-  });
 console.log("SCRIPT VERSION 6 LOADED");
 
 const chatMessages = document.getElementById("chatMessages");
@@ -88,6 +77,3 @@ toggleMaskBtn.addEventListener("click", () => {
   masked = !masked;
   renderPredictions(latestPredictions, latestSimilarity);
 });
-
-}
-好
