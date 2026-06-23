@@ -29,17 +29,16 @@ export default async function handler(req, res) {
 
   try {
     const convo = Array.isArray(history)
-      ? history
-          .map((m) => `m.role==="user"?"使用者":"機器人"：{m.role === "user" ? "使用者" : "機器人"}：m.role==="user"?"使用者":"機器人"：{m.content}`)
-          .join("\n")
+      ? history.map((m) => `m.role==="user"?"使用者":"機器人"：{m.role === "user" ? "使用者" : "機器人"}：m.role==="user"?"使用者":"機器人"：{m.content}`).join("\n")
       : "";
 
     const genPrompt =
       `你是一個中文聊天機器人。只輸出一個 JSON 物件，不要任何說明、不要 markdown 圍欄。\n` +
       `JSON 格式必須是：\n` +
       `{"reply":"用朋友聊天的輕鬆口吻、繁體中文、1~2 句回覆使用者最新這句話",` +
-      `"next_prediction":"根據目前對話脈絡，預測使用者下一句最可能說出的「實際內容」一句話；避免輸出反問句、避免輸出泛用閒聊句、避免輸出空泛猜測；必須具體、口語、與目前對話高度相關；不要問使用者問題"}\n\n` +
+      `"predictions":[{"text":"預測句1","score":0.8},{"text":"預測句2","score":0.7},{"text":"預測句3","score":0.6}]}\n\n` +
       `===對話紀錄===\n${convo}\n\n` +
+      `上一回合預判：${prevPrediction}\n\n` +
       `請針對使用者最新這句「${message}」輸出 JSON。`;
 
     const genRes = await fetch(
@@ -65,22 +64,29 @@ export default async function handler(req, res) {
       parsed = JSON.parse(rawText);
     } catch {
       const m = rawText.match(/\{[\s\S]*\}/);
-      parsed = m
-        ? JSON.parse(m[0])
-        : {
-            reply: rawText || "（沒有回覆）",
-            next_prediction: ""
-          };
+      parsed = m ? JSON.parse(m[0]) : { reply: rawText || "（沒有回覆）", predictions: [] };
     }
 
-    const reply = parsed.reply || "（沒有回覆）";
-    let nextPrediction = parsed.next_prediction || "";
+    const reply = typeof parsed.reply === "string" ? parsed.reply : "（沒有回覆）";
 
-    if (!nextPrediction.trim()) {
-      nextPrediction = "我想聊聊剛剛的話題";
+    let predictions = Array.isArray(parsed.predictions) ? parsed.predictions : [];
+    predictions = predictions
+      .filter((p) => p && typeof p.text === "string")
+      .slice(0, 3)
+      .map((p, idx) => ({
+        text: p.text,
+        score: Number.isFinite(p.score) ? p.score : [0.8, 0.7, 0.6][idx] || 0.5
+      }));
+
+    if (predictions.length === 0) {
+      predictions = [
+        { text: "我想聊聊剛剛的話題", score: 0.8 },
+        { text: "你可以再多說一點嗎", score: 0.7 },
+        { text: "這個話題我很有興趣", score: 0.6 }
+      ];
     }
 
-    let similarity = null;
+    let similarity = 0;
     if (prevPrediction && String(prevPrediction).trim()) {
       const [e1, e2] = await Promise.all([
         embed(prevPrediction, KEY),
@@ -88,13 +94,13 @@ export default async function handler(req, res) {
       ]);
 
       if (e1 && e2) {
-        similarity = Math.round(Math.max(0, cosine(e1, e2)) * 100);
+        similarity = clamp01(cosine(e1, e2));
       }
     }
 
     return res.status(200).json({
       reply,
-      next_prediction: nextPrediction,
+      predictions,
       similarity
     });
   } catch (e) {
@@ -136,4 +142,9 @@ function cosine(a, b) {
   }
 
   return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
+}
+
+function clamp01(x) {
+  if (!Number.isFinite(x)) return 0;
+  return Math.max(0, Math.min(1, x));
 }
