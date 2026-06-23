@@ -1,14 +1,10 @@
 export default async function handler(req, res) {
-  console.log("api/chat.js loaded");
-  console.log("method:", req.method);
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const KEY = process.env.GEMINI_API_KEY;
   if (!KEY) {
-    console.error("Missing GEMINI_API_KEY");
     return res.status(500).json({ error: "伺服器尚未設定 GEMINI_API_KEY 環境變數" });
   }
 
@@ -16,13 +12,10 @@ export default async function handler(req, res) {
   if (typeof body === "string") {
     try {
       body = JSON.parse(body);
-    } catch (e) {
-      console.error("body parse error:", e);
+    } catch {
       body = {};
     }
   }
-
-  console.log("body:", body);
 
   const {
     message,
@@ -65,10 +58,7 @@ export default async function handler(req, res) {
     );
 
     const genData = await genRes.json();
-    console.log("genData:", JSON.stringify(genData, null, 2));
-
     const rawText = genData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    console.log("rawText:", rawText);
 
     let parsed;
     try {
@@ -97,8 +87,6 @@ export default async function handler(req, res) {
         embed(message, KEY)
       ]);
 
-      console.log("embed e1:", !!e1, "e2:", !!e2);
-
       if (e1 && e2) {
         similarity = Math.round(Math.max(0, cosine(e1, e2)) * 100);
       }
@@ -110,7 +98,6 @@ export default async function handler(req, res) {
       similarity
     });
   } catch (e) {
-    console.error("server error:", e);
     return res.status(500).json({
       error: "伺服器錯誤：" + (e?.message || String(e))
     });
@@ -133,7 +120,6 @@ async function embed(text, key) {
   );
 
   const d = await r.json();
-  console.log("embed result:", JSON.stringify(d, null, 2));
   return d?.embedding?.values || null;
 }
 
